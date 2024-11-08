@@ -13,7 +13,7 @@ face_image = cv2.imread('character_face.png', cv2.IMREAD_UNCHANGED)  # 透過背
 cap = cv2.VideoCapture(0)
 
 # 黒画像を作成
-black_img0 = Image.new('RGBA', (640,480), (0, 0, 0, 255))
+black_img0 = Image.new('RGBA', (640, 480), (0, 0, 0, 200))
 black_img0.save('black_image_with_alpha.png')
 black_img = cv2.imread('black_image_with_alpha.png', cv2.IMREAD_UNCHANGED)
 
@@ -36,7 +36,6 @@ def overlay_image(bg_img, fg_img, position):
 
 # 背景を透過させる関数
 def trans_back(fname):
-
     img = Image.open(fname)
     img = img.convert("RGBA")
     datas = img.getdata()
@@ -52,7 +51,7 @@ def trans_back(fname):
     img.save(fname, "PNG")
 
 # スケルトンを描画する関数
-def draw_thick_skeleton(image, landmarks, connections, thickness=10, color=(0, 0, 255)):
+def draw_thick_skeleton(image, landmarks, connections, thickness=20, color=(0, 0, 255)):
     height, width = image.shape[:2]
     for connection in connections:
         start_idx, end_idx = connection
@@ -98,10 +97,18 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
 
         # 's'キーで画像を保存
         if cv2.waitKey(1) & 0xFF == ord('s'):
-            black_img = overlay_image(black_img, face_image, (nose_x, nose_y))
-            draw_thick_skeleton(black_img, results.pose_landmarks.landmark, mp_pose.POSE_CONNECTIONS, thickness=20, color=(255, 255, 255))
-            cv2.imwrite("captured_image.png", black_img)
-            trans_back("captured_image.png")
+            # 1. 黒画像に骨格を描画
+            skeleton_image = black_img.copy()
+            draw_thick_skeleton(skeleton_image, results.pose_landmarks.landmark, mp_pose.POSE_CONNECTIONS, thickness=20, color=(255, 255, 255))
+
+            # 2. 顔画像を骨格の上に重ねる
+            skeleton_image = overlay_image(skeleton_image, face_image, (nose_x, nose_y))
+
+            # 3. 背景透過処理を行い保存
+            cv2.imwrite("captured_image.jpg", skeleton_image)
+            im = Image.open('captured_image.jpg')
+            im.save('captured_image.png')
+            trans_back('captured_image.png')
             print("Image saved!")
 
         if cv2.waitKey(5) & 0xFF == 27:
