@@ -103,6 +103,8 @@ def draw_thick_skeleton(image, landmarks, connections, thickness=20, color=(255,
         # 線を描画
         cv2.line(image, (start_x, start_y), (end_x, end_y), color, thickness)
 
+
+# メインの処理
 with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
     while cap.isOpened():
         success, frame = cap.read()
@@ -177,6 +179,7 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             trans_back('captured_image.png')
             print("Image saved!")
 
+        # ESCキーで終了
         if cv2.waitKey(5) & 0xFF == 27:
             break
 
