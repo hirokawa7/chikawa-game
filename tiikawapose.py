@@ -7,10 +7,10 @@ from PIL import Image
 mp_pose = mp.solutions.pose
 
 # 貼り付ける透過背景付き画像の読み込み
-face_image = cv2.imread('character_face.png', cv2.IMREAD_UNCHANGED)
-left_eye_image = cv2.imread('eye_image.png', cv2.IMREAD_UNCHANGED)
-right_eye_image = cv2.imread('eye_image.png', cv2.IMREAD_UNCHANGED)
-mouth_image = cv2.imread('mouth_image.png', cv2.IMREAD_UNCHANGED)
+face_image = cv2.imread('./images/chi1/character_face.png', cv2.IMREAD_UNCHANGED)
+left_eye_image = cv2.imread('./images/chi1/eye_image.png', cv2.IMREAD_UNCHANGED)
+right_eye_image = cv2.imread('./images/chi1/eye_image.png', cv2.IMREAD_UNCHANGED)
+mouth_image = cv2.imread('./images/chi1/mouth_image.png', cv2.IMREAD_UNCHANGED)
 
 # カメラ映像の取得
 cap = cv2.VideoCapture(0)
@@ -20,9 +20,19 @@ black_img0 = Image.new('RGBA', (640, 480), (0, 0, 0, 200))
 black_img0.save('black_image_with_alpha.png')
 black_img = cv2.imread('black_image_with_alpha.png', cv2.IMREAD_UNCHANGED)
 
+# 画像をリサイズする関数
+def resize_image(image, scale):
+    # スケーリング処理
+    new_size = (int(image.shape[1] * scale), int(image.shape[0] * scale))
+    resized_image = cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
+
+    return resized_image
+
 # 画像を重ねる関数
 def overlay_image(bg_img, fg_img, position, angle=0, scale=1.0):
     
+    fg_img = resize_image(fg_img, scale)
+
     x, y = position
     h, w = bg_img.shape[:2]
     fg_h, fg_w = fg_img.shape[:2]
@@ -58,7 +68,7 @@ def trans_back(fname):
     img.save(fname, "PNG")
 
 # スケルトンを描画する関数
-def draw_thick_skeleton(image, landmarks, connections, thickness=20, color=(0, 0, 255)):
+def draw_thick_skeleton(image, landmarks, connections, thickness=20, color=(255, 255, 255)):
     height, width = image.shape[:2]
     for connection in connections:
         start_idx, end_idx = connection
@@ -90,7 +100,7 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
 
         # 全身骨格の極太描画
         if results.pose_landmarks:
-            draw_thick_skeleton(image, results.pose_landmarks.landmark, mp_pose.POSE_CONNECTIONS, thickness=20, color=(0, 0, 255))
+            draw_thick_skeleton(image, results.pose_landmarks.landmark, mp_pose.POSE_CONNECTIONS, thickness=20, color=(255, 255, 255))
 
             # 目と口のランドマークを取得し、回転とスケーリングを考慮
             nose = results.pose_landmarks.landmark[mp_pose.PoseLandmark.NOSE]
