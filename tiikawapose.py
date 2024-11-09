@@ -4,6 +4,8 @@ import numpy as np
 from PIL import Image
 import os
 import random
+import math
+
 
 # MediaPipeとOpenCVの設定
 mp_pose = mp.solutions.pose
@@ -12,10 +14,16 @@ mp_pose = mp.solutions.pose
 cap = cv2.VideoCapture(0)
 
 # 黒画像を作成
-black_img0 = Image.new('RGBA', (640, 480), (0, 0, 0, 200))
+black_img0 = Image.new('RGBA', (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))), (0, 0, 0, 200))
 black_img0.save('black_image_with_alpha.png')
 black_img = cv2.imread('black_image_with_alpha.png', cv2.IMREAD_UNCHANGED)
 
+# 装飾用カウントとフラグ
+deco_count = 0
+deco_flag = False
+
+# うさぎかどうかのフラグ
+usagi_flag = False
 
 # ランダムにフォルダを選択する関数
 def load_images_with_names_from_random_subfolder(parent_folder):
@@ -43,8 +51,19 @@ mouth_image = cv2.imread('./images/' + str(random_subfolder_name) + '/mouth_imag
 
 # 画像をリサイズする関数
 def resize_image(image, scale):
-    # スケーリング処理
+
+    # scaleが正の値か確認
+    if scale <= 0:
+        raise ValueError("Scale must be positive.")
+
+    # 新しいサイズを計算
     new_size = (int(image.shape[1] * scale), int(image.shape[0] * scale))
+
+    # new_sizeの各値が0でないことを確認
+    if new_size[0] <= 0 or new_size[1] <= 0:
+        raise ValueError("Calculated new size has zero or negative dimensions.")
+
+    # 画像をリサイズ
     resized_image = cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
 
     return resized_image
@@ -104,6 +123,35 @@ def draw_thick_skeleton(image, landmarks, connections, thickness=20, color=(255,
         cv2.line(image, (start_x, start_y), (end_x, end_y), color, thickness)
 
 
+# 距離を計算する関数
+def calculate_distance(landmark1, landmark2, image_width, image_height):
+
+    x1, y1 = int(landmark1.x * image_width), int(landmark1.y * image_height)
+    x2, y2 = int(landmark2.x * image_width), int(landmark2.y * image_height)
+
+    return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+
+# 両手が顔の近くにあるかを判定する関数
+def is_hands_near_face(landmarks, image_width, image_height, eye_distance, threshould_ratio=1.5):
+
+    # 鼻と両手のランドマークを取得
+    nose = landmarks[mp_pose.PoseLandmark.NOSE]
+    left_hand = landmarks[mp_pose.PoseLandmark.LEFT_INDEX]
+    right_hand = landmarks[mp_pose.PoseLandmark.RIGHT_INDEX]
+
+    # 両手と顔の距離を計算
+    left_distance = calculate_distance(nose, left_hand, image_width, image_height)
+    right_distance = calculate_distance(nose, right_hand, image_width, image_height)
+
+    # 両手と顔の距離が閾値いないなら、顔の近くにあると判定
+    threshould_distance = threshould_ratio * eye_distance
+    left_near_face = left_distance < threshould_distance
+    right_near_face = right_distance < threshould_distance
+
+    return None
+
+
 # メインの処理
 with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
     while cap.isOpened():
@@ -132,7 +180,10 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             mouth = results.pose_landmarks.landmark[mp_pose.PoseLandmark.MOUTH_LEFT]
 
             # 画像上のピクセル距離を計算
-            eye_distance = np.sqrt((left_eye.x - right_eye.x)**2 + (left_eye.y - right_eye.y)**2) * frame.shape[1]
+            eye_distance = calculate_distance(left_eye, right_eye, frame.shape[1], frame.shape[0])
+
+            # 両手が顔の近くにあるか判定
+            is_hands_near_face(results.pose_landmarks.landmark, frame.shape[1], frame.shape[0], eye_distance)
 
             # 基準とする目の距離(基準とするピクセルを指定)
             scale = eye_distance / 100
