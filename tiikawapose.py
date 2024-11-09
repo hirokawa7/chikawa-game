@@ -18,15 +18,13 @@ black_img0 = Image.new('RGBA', (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.
 black_img0.save('black_image_with_alpha.png')
 black_img = cv2.imread('black_image_with_alpha.png', cv2.IMREAD_UNCHANGED)
 
-# 装飾用カウントとフラグ
-deco_count = 0
-deco_flag = False
-
 # うさぎかどうかのフラグ
 usagi_flag = False
 
 # ランダムにフォルダを選択する関数
 def load_images_with_names_from_random_subfolder(parent_folder):
+
+    global usagi_flag
 
     # 親フォルダ内のサブフォルダ一覧を取得
     subfolders = [os.path.join(parent_folder, d) for d in os.listdir(parent_folder) if os.path.isdir(os.path.join(parent_folder, d))]
@@ -38,9 +36,13 @@ def load_images_with_names_from_random_subfolder(parent_folder):
     random_subfolder = random.choice(subfolders)
     print(f"選択されたサブフォルダ: {random_subfolder[9:]}")
 
+    if 'usagi' in random_subfolder[9:]:
+        usagi_flag = True
+
     return random_subfolder[9:]
 
-# サブフォルダをランダムに選択
+
+# キャラクターのサブフォルダをランダムに選択
 random_subfolder_name = load_images_with_names_from_random_subfolder("./images")
 
 # 貼り付ける透過背景付き画像の読み込み
@@ -48,6 +50,11 @@ face_image = cv2.imread('./images/' + str(random_subfolder_name) + '/character_f
 left_eye_image = cv2.imread('./images/' + str(random_subfolder_name) + '/eye_image.png', cv2.IMREAD_UNCHANGED)
 right_eye_image = cv2.imread('./images/' + str(random_subfolder_name) + '/eye_image.png', cv2.IMREAD_UNCHANGED)
 mouth_image = cv2.imread('./images/' + str(random_subfolder_name) + '/mouth_image.png', cv2.IMREAD_UNCHANGED)
+
+# 装飾のフォルダをランダムに選択
+vr_subfolder_name = load_images_with_names_from_random_subfolder("./decora")
+vr_image = cv2.imread('./decora/' + str(vr_subfolder_name) + '/vr.png', cv2.IMREAD_UNCHANGED)
+
 
 # 画像をリサイズする関数
 def resize_image(image, scale):
@@ -108,7 +115,15 @@ def trans_back(fname):
     img.save(fname, "PNG")
 
 # スケルトンを描画する関数
-def draw_thick_skeleton(image, landmarks, connections, thickness=20, color=(255, 255, 255)):
+def draw_thick_skeleton(image, landmarks, connections, thickness=20):
+
+    global usagi_flag
+
+    if usagi_flag == False:
+        color = (255, 255, 255)
+    else:
+        color = (205, 235, 255)
+
     height, width = image.shape[:2]
     for connection in connections:
         start_idx, end_idx = connection
@@ -133,7 +148,9 @@ def calculate_distance(landmark1, landmark2, image_width, image_height):
 
 
 # 両手が顔の近くにあるかを判定する関数
-def is_hands_near_face(landmarks, image_width, image_height, eye_distance, threshould_ratio=1.5):
+def is_hands_near_face(landmarks, image_width, image_height, eye_distance, threshould_ratio=2):
+
+    hands_near_face = False
 
     # 鼻と両手のランドマークを取得
     nose = landmarks[mp_pose.PoseLandmark.NOSE]
@@ -149,7 +166,10 @@ def is_hands_near_face(landmarks, image_width, image_height, eye_distance, thres
     left_near_face = left_distance < threshould_distance
     right_near_face = right_distance < threshould_distance
 
-    return None
+    if (left_near_face == True) and (right_near_face == True):
+        hands_near_face = True
+
+    return hands_near_face
 
 
 # メインの処理
@@ -171,7 +191,7 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
 
         # 全身骨格の極太描画
         if results.pose_landmarks:
-            draw_thick_skeleton(image, results.pose_landmarks.landmark, mp_pose.POSE_CONNECTIONS, thickness=20, color=(255, 255, 255))
+            draw_thick_skeleton(image, results.pose_landmarks.landmark, mp_pose.POSE_CONNECTIONS, thickness=20)
 
             # 目と口のランドマークを取得し、回転とスケーリングを考慮
             nose = results.pose_landmarks.landmark[mp_pose.PoseLandmark.NOSE]
@@ -183,7 +203,7 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             eye_distance = calculate_distance(left_eye, right_eye, frame.shape[1], frame.shape[0])
 
             # 両手が顔の近くにあるか判定
-            is_hands_near_face(results.pose_landmarks.landmark, frame.shape[1], frame.shape[0], eye_distance)
+            hands_near_face = is_hands_near_face(results.pose_landmarks.landmark, frame.shape[1], frame.shape[0], eye_distance)
 
             # 基準とする目の距離(基準とするピクセルを指定)
             scale = eye_distance / 100
@@ -204,6 +224,10 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
 
             # 口の位置と角度を計算して貼り付け
             image = overlay_image(image, mouth_image, (mouth_x, mouth_y), angle=eye_angle, scale=scale)
+
+            # 両手が顔の近くにあるとき、装飾を貼り付け
+            if hands_near_face == True:
+                image = overlay_image(image, vr_image, (nose_x, nose_y), angle=0, scale=scale)
 
         # 画像を表示
         cv2.imshow('Pose Estimation', image)
