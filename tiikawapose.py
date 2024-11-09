@@ -2,15 +2,11 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from PIL import Image
+import os
+import random
 
 # MediaPipeとOpenCVの設定
 mp_pose = mp.solutions.pose
-
-# 貼り付ける透過背景付き画像の読み込み
-face_image = cv2.imread('./images/chi1/character_face.png', cv2.IMREAD_UNCHANGED)
-left_eye_image = cv2.imread('./images/chi1/eye_image.png', cv2.IMREAD_UNCHANGED)
-right_eye_image = cv2.imread('./images/chi1/eye_image.png', cv2.IMREAD_UNCHANGED)
-mouth_image = cv2.imread('./images/chi1/mouth_image.png', cv2.IMREAD_UNCHANGED)
 
 # カメラ映像の取得
 cap = cv2.VideoCapture(0)
@@ -19,6 +15,31 @@ cap = cv2.VideoCapture(0)
 black_img0 = Image.new('RGBA', (640, 480), (0, 0, 0, 200))
 black_img0.save('black_image_with_alpha.png')
 black_img = cv2.imread('black_image_with_alpha.png', cv2.IMREAD_UNCHANGED)
+
+
+# ランダムにフォルダを選択する関数
+def load_images_with_names_from_random_subfolder(parent_folder):
+
+    # 親フォルダ内のサブフォルダ一覧を取得
+    subfolders = [os.path.join(parent_folder, d) for d in os.listdir(parent_folder) if os.path.isdir(os.path.join(parent_folder, d))]
+    
+    if not subfolders:
+        print("サブフォルダが見つかりません")
+
+    # サブフォルダをランダムに選択
+    random_subfolder = random.choice(subfolders)
+    print(f"選択されたサブフォルダ: {random_subfolder[9:]}")
+
+    return random_subfolder[9:]
+
+# サブフォルダをランダムに選択
+random_subfolder_name = load_images_with_names_from_random_subfolder("./images")
+
+# 貼り付ける透過背景付き画像の読み込み
+face_image = cv2.imread('./images/' + str(random_subfolder_name) + '/character_face.png', cv2.IMREAD_UNCHANGED)
+left_eye_image = cv2.imread('./images/' + str(random_subfolder_name) + '/eye_image.png', cv2.IMREAD_UNCHANGED)
+right_eye_image = cv2.imread('./images/' + str(random_subfolder_name) + '/eye_image.png', cv2.IMREAD_UNCHANGED)
+mouth_image = cv2.imread('./images/' + str(random_subfolder_name) + '/mouth_image.png', cv2.IMREAD_UNCHANGED)
 
 # 画像をリサイズする関数
 def resize_image(image, scale):
