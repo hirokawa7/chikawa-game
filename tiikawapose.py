@@ -18,8 +18,8 @@ cap = cv2.VideoCapture(0)
 
 # 黒画像を作成
 black_img0 = Image.new('RGBA', (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))), (0, 0, 0, 200))
-black_img0.save('black_image_with_alpha.png')
-black_img = cv2.imread('black_image_with_alpha.png', cv2.IMREAD_UNCHANGED)
+black_img0.save('./middle/black_image_with_alpha.png')
+black_img = cv2.imread('./middle/black_image_with_alpha.png', cv2.IMREAD_UNCHANGED)
 
 # 初期化：outputディレクトリの中身を空にする
 output_dir = './output'
@@ -137,7 +137,7 @@ random_subfolder_name = load_images_with_names_from_random_subfolder("./images")
 
 # 貼り付ける透過背景付き画像の読み込み
 face_image = cv2.imread('./images/' + str(random_subfolder_name) + '/character_face.png', cv2.IMREAD_UNCHANGED)
-left_eye_image = cv2.imread('./images/' + str(random_subfolder_name) + '/eye_image.png', cv2.IMREAD_UNCHANGED)
+left_eye_image = cv2.imread('./images/' + str(random_subfolder_name) + '/eye_image_rv.png', cv2.IMREAD_UNCHANGED)
 right_eye_image = cv2.imread('./images/' + str(random_subfolder_name) + '/eye_image.png', cv2.IMREAD_UNCHANGED)
 mouth_image = cv2.imread('./images/' + str(random_subfolder_name) + '/mouth_image.png', cv2.IMREAD_UNCHANGED)
 
@@ -305,7 +305,7 @@ def is_hand_near_face(landmarks, image_width, image_height, eye_distance, thresh
     return hand_near_face
 
 # 両手が顔の近くにあるかを判定する関数
-def is_hands_near_face(landmarks, image_width, image_height, eye_distance, threshould_ratio=5):
+def is_hands_near_face(landmarks, image_width, image_height, eye_distance, threshould_ratio=3):
 
     hands_near_face = False
 
@@ -521,8 +521,8 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
 
             # 3. 背景透過処理を行い保存
             filename = f"{output_dir}/captured_image_{i}.png"
-            cv2.imwrite("captured_image.jpg", skeleton_image)
-            im = Image.open("captured_image.jpg")
+            cv2.imwrite("./middle/captured_image.jpg", skeleton_image)
+            im = Image.open("./middle/captured_image.jpg")
             im.save(filename)
             trans_back(filename)
             print(f"Image saved: {filename}")
