@@ -394,7 +394,7 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             # 顔画像の貼り付け
             if (right_hand_raised == True) and (hachi_flag == True):
                 image = overlay_image(image, mirai_hachi, (nose_x, nose_y), angle=0, scale=scale)
-            if (hands_joined == True) and (usagi_flag == True):
+            elif (hands_joined == True) and (usagi_flag == True):
                 image = overlay_image(image, kasa_usagi, (nose_x, nose_y), angle=0, scale=scale)
             else:
                 image = overlay_image(image, face_image, (nose_x, nose_y), angle=0, scale=scale)
@@ -431,6 +431,8 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             # 2. 画像を骨格の上に重ねる
             if (right_hand_raised == True) and (hachi_flag == True):
                 skeleton_image = overlay_image(skeleton_image, mirai_hachi, (nose_x, nose_y), angle=0, scale=scale)
+            elif (hands_joined == True) and (usagi_flag == True):
+                skeleton_image = overlay_image(skeleton_image, kasa_usagi, (nose_x, nose_y), angle=0, scale=scale)
             else:
                 skeleton_image = overlay_image(skeleton_image, face_image, (nose_x, nose_y), angle=0, scale=scale)
 
