@@ -57,7 +57,7 @@ def draw_sparkles(image, center_x, center_y, scale=1.0):
         cv2.circle(image, (x, y), sparkle['radius'], sparkle['color'], -1)
 
 # 手が一定距離以上離れているかを判定する関数
-def are_hands_spread_out(landmarks, image_width, threshold_ratio=0.5):
+def are_hands_spread_out(landmarks, image_width, threshold_ratio=0.7):
     left_hand = landmarks[mp_pose.PoseLandmark.LEFT_INDEX]
     right_hand = landmarks[mp_pose.PoseLandmark.RIGHT_INDEX]
     
@@ -287,7 +287,7 @@ def is_hand_near_face(landmarks, image_width, image_height, eye_distance, thresh
     return hand_near_face
 
 # 両手が顔の近くにあるかを判定する関数
-def is_hands_near_face(landmarks, image_width, image_height, eye_distance, threshould_ratio=2.5):
+def is_hands_near_face(landmarks, image_width, image_height, eye_distance, threshould_ratio=5):
 
     hands_near_face = False
 
@@ -442,7 +442,7 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
 
             # 目の位置と角度を計算して貼り付け
             eye_angle = np.degrees(np.arctan2(right_eye_y - left_eye_y, right_eye_x - left_eye_x))
-            if hands_near_face == True:
+            if hands_near_face == True and hand_near_face == False:
                 image = overlay_image(image, sad_eye_image, (left_eye_x, left_eye_y), angle=eye_angle, scale=scale)
                 image = overlay_image(image, sad_eye_image, (right_eye_x, right_eye_y), angle=eye_angle, scale=scale)
             else:
@@ -478,7 +478,7 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
                 skeleton_image = overlay_image(skeleton_image, face_image, (nose_x, nose_y), angle=0, scale=scale)
 
             # 目の位置と角度を計算して貼り付け
-            if hands_near_face == True:
+            if hands_near_face == True and hand_near_face == False:
                 skeleton_image = overlay_image(skeleton_image, sad_eye_image, (left_eye_x, left_eye_y), angle=eye_angle, scale=scale)
                 skeleton_image = overlay_image(skeleton_image, sad_eye_image, (right_eye_x, right_eye_y), angle=eye_angle, scale=scale)
             else:
