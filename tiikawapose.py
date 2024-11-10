@@ -56,6 +56,40 @@ def draw_sparkles(image, center_x, center_y, scale=1.0):
 
         cv2.circle(image, (x, y), sparkle['radius'], sparkle['color'], -1)
 
+# 手が一定距離以上離れているかを判定する関数
+def are_hands_spread_out(landmarks, image_width, threshold_ratio=0.5):
+    left_hand = landmarks[mp_pose.PoseLandmark.LEFT_INDEX]
+    right_hand = landmarks[mp_pose.PoseLandmark.RIGHT_INDEX]
+    
+    # 左右の手のx座標の距離を計算
+    hand_distance = abs(left_hand.x - right_hand.x) * image_width
+    # 閾値を設定して、手が横に広がっているかどうか判定
+    threshold_distance = image_width * threshold_ratio
+    return hand_distance > threshold_distance
+
+# 雨を描画するための関数
+def draw_rainbow_rain_effect(image, num_drops=100, drop_length=20, drop_thickness=5):
+    rainbow_rain_image = image.copy()
+    height, width, _ = rainbow_rain_image.shape
+    
+    for _ in range(num_drops):
+        # ランダムな色（虹色の範囲内）
+        drop_color = (
+            random.randint(0, 255),   # B
+            random.randint(0, 255),   # G
+            random.randint(0, 255)    # R
+        )
+        x = random.randint(0, width)
+        y = random.randint(0, height - drop_length)
+        end_y = y + drop_length
+        cv2.line(rainbow_rain_image, (x, y), (x, end_y), drop_color, drop_thickness)
+    
+    # 透明度を設定
+    alpha = 0.5
+    cv2.addWeighted(rainbow_rain_image, alpha, image, 1 - alpha, 0, image)
+    
+    return image
+
 # ランダムにフォルダを選択する関数
 def load_images_with_names_from_random_subfolder(parent_folder):
 
@@ -390,6 +424,13 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
                 effect_frame_count += 1
                 if effect_frame_count >= effect_duration:
                     effect_active = False  # エフェクトを終了
+            
+            # 両手が横に広がっているかどうかを判定
+            hands_spread = are_hands_spread_out(results.pose_landmarks.landmark, frame.shape[1])
+
+            # 雨のエフェクト
+            if hands_spread == True:
+                image = draw_rainbow_rain_effect(image)
 
             # 顔画像の貼り付け
             if (right_hand_raised == True) and (hachi_flag == True):
