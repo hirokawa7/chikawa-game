@@ -102,6 +102,9 @@ mirai_hachi = cv2.imread('./options/miraiface.png', cv2.IMREAD_UNCHANGED)
 # 太陽
 sun_image = cv2.imread('./options/sun.png', cv2.IMREAD_UNCHANGED)
 
+# 傘の顔
+kasa_usagi = cv2.imread('./options/kasaface.png', cv2.IMREAD_UNCHANGED)
+
 # 画像をリサイズする関数
 def resize_image(image, scale):
 
@@ -158,6 +161,9 @@ def trans_back(fname):
             newData.append(item)
 
     img.putdata(newData)
+
+    img.resize((640, 360))
+
     img.save(fname, "PNG")
 
 # スケルトンを描画する関数
@@ -191,6 +197,10 @@ def calculate_distance(landmark1, landmark2, image_width, image_height):
     x2, y2 = int(landmark2.x * image_width), int(landmark2.y * image_height)
 
     return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+
+# 顔の↓で手を合わせているかどうかの関数
+
 
 # 片手が顔の近くにあるかを判定する関数
 def is_hand_near_face(landmarks, image_width, image_height, eye_distance, threshould_ratio=2):
