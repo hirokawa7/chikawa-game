@@ -199,6 +199,33 @@ def calculate_distance(landmark1, landmark2, image_width, image_height):
     return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
 
+# 顔の下で手を合わせているかどうかの関数
+def is_hands_joined_below_face(landmarks, image_width, image_height, join_threshold=50, face_to_hand_ratio=0.5):
+
+    # 顔（鼻）と手のランドマークを取得
+    nose = landmarks[mp_pose.PoseLandmark.NOSE]
+    left_hand = landmarks[mp_pose.PoseLandmark.LEFT_INDEX]
+    right_hand = landmarks[mp_pose.PoseLandmark.RIGHT_INDEX]
+
+    # 顔と両手の座標を取得
+    nose_x, nose_y = int(nose.x * image_width), int(nose.y * image_height)
+    left_hand_x, left_hand_y = int(left_hand.x * image_width), int(left_hand.y * image_height)
+    right_hand_x, right_hand_y = int(right_hand.x * image_width), int(right_hand.y * image_height)
+
+    # 両手が顔の下にあるか
+    hands_below_face = left_hand_y > nose_y and right_hand_y > nose_y
+
+    # 両手のx座標が近い（手が合わせているとみなす閾値以下）か
+    hands_joined = abs(left_hand_x - right_hand_x) < join_threshold
+
+    # 手が顔に近い位置にあるか（手のy座標が顔の少し下にあること）
+    hands_close_to_face = (left_hand_y - nose_y) < (face_to_hand_ratio * image_height) and (right_hand_y - nose_y) < (face_to_hand_ratio * image_height)
+    
+    # すべての条件が満たされれば、顔の下で手を合わせていると判定
+    if hands_below_face and hands_joined and hands_close_to_face:
+        return True
+
+    return False
 
 
 # 片手が顔の近くにあるかを判定する関数
@@ -336,6 +363,9 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             right_hand_raised = is_right_hand_raised(results.pose_landmarks.landmark, frame.shape[0])
             left_hand_raised = is_left_hand_raised(results.pose_landmarks.landmark, frame.shape[0])
 
+            # 両手を合わせているか判定
+            hands_joined = is_hands_joined_below_face(results.pose_landmarks.landmark, frame.shape[1], frame.shape[0])
+
             # 両手があがっているときキラキラ
             if right_hand_raised and left_hand_raised and not effect_active:
                 effect_active = True
@@ -364,6 +394,8 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             # 顔画像の貼り付け
             if (right_hand_raised == True) and (hachi_flag == True):
                 image = overlay_image(image, mirai_hachi, (nose_x, nose_y), angle=0, scale=scale)
+            if (hands_joined == True) and (usagi_flag == True):
+                image = overlay_image(image, kasa_usagi, (nose_x, nose_y), angle=0, scale=scale)
             else:
                 image = overlay_image(image, face_image, (nose_x, nose_y), angle=0, scale=scale)
 
