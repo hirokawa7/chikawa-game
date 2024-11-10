@@ -5,6 +5,7 @@ from PIL import Image
 import os
 import random
 import math
+import time
 
 
 # MediaPipeとOpenCVの設定
@@ -19,6 +20,23 @@ cap = cv2.VideoCapture(0)
 black_img0 = Image.new('RGBA', (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))), (0, 0, 0, 200))
 black_img0.save('black_image_with_alpha.png')
 black_img = cv2.imread('black_image_with_alpha.png', cv2.IMREAD_UNCHANGED)
+
+# 初期化：outputディレクトリの中身を空にする
+output_dir = './output'
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+# outputディレクトリ内のファイルを削除
+for f in os.listdir(output_dir):
+    file_path = os.path.join(output_dir, f)
+    if os.path.isfile(file_path):
+        os.remove(file_path)
+
+# 1秒間隔のタイマー制御用
+last_save_time = time.time()
+
+# 保存用のカウンター
+i = 0
 
 # うさぎかどうかのフラグ
 usagi_flag = False
@@ -286,7 +304,6 @@ def is_hand_near_face(landmarks, image_width, image_height, eye_distance, thresh
 
     return hand_near_face
 
-
 # 両手が顔の近くにあるかを判定する関数
 def is_hands_near_face(landmarks, image_width, image_height, eye_distance, threshould_ratio=5):
 
@@ -464,43 +481,52 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
         # 画像を表示
         cv2.imshow('Pose Estimation', image)
 
-        # 's'キーで画像を保存
-        if cv2.waitKey(1) & 0xFF == ord('s'):
+        # 1秒ごとの保存処理
+        current_time = time.time()
+        if current_time - last_save_time >= 1.0:
+            last_save_time = current_time  # タイマーをリセット
+
             # 1. 黒画像に骨格を描画
             skeleton_image = black_img.copy()
-            draw_thick_skeleton(skeleton_image, results.pose_landmarks.landmark, mp_pose.POSE_CONNECTIONS, thickness=20)
 
-            # 2. 画像を骨格の上に重ねる
-            if (right_hand_raised == True) and (hachi_flag == True):
-                skeleton_image = overlay_image(skeleton_image, mirai_hachi, (nose_x, nose_y), angle=0, scale=scale)
-            elif (hands_joined == True) and (usagi_flag == True):
-                skeleton_image = overlay_image(skeleton_image, kasa_usagi, (nose_x, nose_y), angle=0, scale=scale)
-            else:
-                skeleton_image = overlay_image(skeleton_image, face_image, (nose_x, nose_y), angle=0, scale=scale)
+            try:
+                draw_thick_skeleton(skeleton_image, results.pose_landmarks.landmark, mp_pose.POSE_CONNECTIONS, thickness=20)
 
-            # 目の位置と角度を計算して貼り付け
-            if hands_near_face == True and hand_near_face == False:
-                skeleton_image = overlay_image(skeleton_image, sad_eye_image, (left_eye_x, left_eye_y), angle=eye_angle, scale=scale)
-                skeleton_image = overlay_image(skeleton_image, sad_eye_image, (right_eye_x, right_eye_y), angle=eye_angle, scale=scale)
-            else:
-                skeleton_image = overlay_image(skeleton_image, left_eye_image, (left_eye_x, left_eye_y), angle=eye_angle, scale=scale)
-                skeleton_image = overlay_image(skeleton_image, right_eye_image, (right_eye_x, right_eye_y), angle=eye_angle, scale=scale)
+                # 2. 画像を骨格の上に重ねる
+                if (right_hand_raised == True) and (hachi_flag == True):
+                    skeleton_image = overlay_image(skeleton_image, mirai_hachi, (nose_x, nose_y), angle=0, scale=scale)
+                elif (hands_joined == True) and (usagi_flag == True):
+                    skeleton_image = overlay_image(skeleton_image, kasa_usagi, (nose_x, nose_y), angle=0, scale=scale)
+                else:
+                    skeleton_image = overlay_image(skeleton_image, face_image, (nose_x, nose_y), angle=0, scale=scale)
 
-            skeleton_image = overlay_image(skeleton_image, mouth_image, (mouth_x, mouth_y), angle=eye_angle, scale=scale)
+                # 目の位置と角度を計算して貼り付け
+                if hands_near_face == True and hand_near_face == False:
+                    skeleton_image = overlay_image(skeleton_image, sad_eye_image, (left_eye_x, left_eye_y), angle=eye_angle, scale=scale)
+                    skeleton_image = overlay_image(skeleton_image, sad_eye_image, (right_eye_x, right_eye_y), angle=eye_angle, scale=scale)
+                else:
+                    skeleton_image = overlay_image(skeleton_image, left_eye_image, (left_eye_x, left_eye_y), angle=eye_angle, scale=scale)
+                    skeleton_image = overlay_image(skeleton_image, right_eye_image, (right_eye_x, right_eye_y), angle=eye_angle, scale=scale)
 
-            if hand_near_face == True:
-                skeleton_image = overlay_image(skeleton_image, vr_image, (nose_x, nose_y), angle=0, scale=scale)
+                skeleton_image = overlay_image(skeleton_image, mouth_image, (mouth_x, mouth_y), angle=eye_angle, scale=scale)
 
-            if (right_hand_raised == True) and (left_hand_raised == False) and (hachi_flag == False):
-                skeleton_image = overlay_image(skeleton_image, sun_image, (right_hand_x, right_hand_y), angle=0, scale=scale)
+                if hand_near_face == True:
+                    skeleton_image = overlay_image(skeleton_image, vr_image, (nose_x, nose_y), angle=0, scale=scale)
+
+                if (right_hand_raised == True) and (left_hand_raised == False) and (hachi_flag == False):
+                    skeleton_image = overlay_image(skeleton_image, sun_image, (right_hand_x, right_hand_y), angle=0, scale=scale)
+
+            except:
+                pass
 
             # 3. 背景透過処理を行い保存
+            filename = f"{output_dir}/captured_image_{i}.png"
             cv2.imwrite("captured_image.jpg", skeleton_image)
-            im = Image.open('captured_image.jpg')
-            im.save('./output/captured_image'+str(i)+'.png')
-            trans_back('./output/captured_image'+str(i)+'.png')
-            print("Image saved!")
-            i = i+1
+            im = Image.open("captured_image.jpg")
+            im.save(filename)
+            trans_back(filename)
+            print(f"Image saved: {filename}")
+            i += 1
 
         # ESCキーで終了
         if cv2.waitKey(5) & 0xFF == 27:
