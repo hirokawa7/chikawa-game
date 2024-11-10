@@ -199,7 +199,6 @@ def calculate_distance(landmark1, landmark2, image_width, image_height):
     return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
 
-# 顔の↓で手を合わせているかどうかの関数
 
 
 # 片手が顔の近くにあるかを判定する関数
