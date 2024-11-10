@@ -35,6 +35,9 @@ for f in os.listdir(output_dir):
 # 1秒間隔のタイマー制御用
 last_save_time = time.time()
 
+# キャラクターの切り替え用
+last_character_switch_time = time.time()
+
 # 保存用のカウンター
 i = 0
 
@@ -43,6 +46,9 @@ usagi_flag = False
 
 # はちかどうかのフラグ
 hachi_flag = False
+
+# ちいかどうかのフラグ
+chi_flag = False
 
 # キラキラエフェクトの半径と数
 max_radius = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -111,7 +117,7 @@ def draw_rainbow_rain_effect(image, num_drops=100, drop_length=20, drop_thicknes
 # ランダムにフォルダを選択する関数
 def load_images_with_names_from_random_subfolder(parent_folder):
 
-    global usagi_flag, hachi_flag
+    global usagi_flag, hachi_flag, chi_flag
 
     # 親フォルダ内のサブフォルダ一覧を取得
     subfolders = [os.path.join(parent_folder, d) for d in os.listdir(parent_folder) if os.path.isdir(os.path.join(parent_folder, d))]
@@ -123,27 +129,52 @@ def load_images_with_names_from_random_subfolder(parent_folder):
     random_subfolder = random.choice(subfolders)
     print(f"選択されたサブフォルダ: {random_subfolder[9:]}")
 
-    if 'usagi' in random_subfolder[9:]:
-        usagi_flag = True
-
-    if 'hachi3' in random_subfolder[9:]:
-        hachi_flag = True
-
     return random_subfolder[9:]
 
 
-# キャラクターのサブフォルダをランダムに選択
-random_subfolder_name = load_images_with_names_from_random_subfolder("./images")
+def load_random_character_images():
+    # フラグの初期化
+    global usagi_flag, hachi_flag, chi_flag
+    usagi_flag = False
+    hachi_flag = False
+    chi_flag = False
 
-# 貼り付ける透過背景付き画像の読み込み
-face_image = cv2.imread('./images/' + str(random_subfolder_name) + '/character_face.png', cv2.IMREAD_UNCHANGED)
-left_eye_image = cv2.imread('./images/' + str(random_subfolder_name) + '/eye_image_rv.png', cv2.IMREAD_UNCHANGED)
-right_eye_image = cv2.imread('./images/' + str(random_subfolder_name) + '/eye_image.png', cv2.IMREAD_UNCHANGED)
-mouth_image = cv2.imread('./images/' + str(random_subfolder_name) + '/mouth_image.png', cv2.IMREAD_UNCHANGED)
+    # キャラクター画像のフォルダパス
+    character_base_path = "./images"
+    subfolders = [f for f in os.listdir(character_base_path) if os.path.isdir(os.path.join(character_base_path, f))]
 
-# 装飾のフォルダをランダムに選択
-vr_subfolder_name = load_images_with_names_from_random_subfolder("./decora")
-vr_image = cv2.imread('./decora/' + str(vr_subfolder_name) + '/vr.png', cv2.IMREAD_UNCHANGED)
+    # ランダムにサブフォルダを選択
+    random_subfolder = random.choice(subfolders)
+    random_subfolder_path = os.path.join(character_base_path, random_subfolder)
+
+    # サブフォルダ名に基づくフラグ設定
+    if 'usagi' in random_subfolder:
+        usagi_flag = True
+        hachi_flag = False
+        chi_flag = False
+    if 'ha' in random_subfolder:
+        hachi_flag = True
+        usagi_flag = False
+        chi_flag = False
+    if 'chi' in random_subfolder:
+        chi_flag = True
+        usagi_flag = False
+        hachi_flag = False
+
+    vr_subfolder_name = load_images_with_names_from_random_subfolder("./decora")
+    vr_image = cv2.imread(f'./decora/{vr_subfolder_name}/vr.png', cv2.IMREAD_UNCHANGED)
+
+    # キャラクター画像の読み込み
+    face_image = cv2.imread(os.path.join(random_subfolder_path, 'character_face.png'), cv2.IMREAD_UNCHANGED)
+    left_eye_image = cv2.imread(os.path.join(random_subfolder_path, 'eye_image_rv.png'), cv2.IMREAD_UNCHANGED)
+    right_eye_image = cv2.imread(os.path.join(random_subfolder_path, 'eye_image.png'), cv2.IMREAD_UNCHANGED)
+    mouth_image = cv2.imread(os.path.join(random_subfolder_path, 'mouth_image.png'), cv2.IMREAD_UNCHANGED)
+
+    # 読み込んだ画像とフラグを返す
+    return face_image, left_eye_image, right_eye_image, mouth_image, vr_image
+
+# キャラクター画像とフラグを切り替えながら取得
+face_image, left_eye_image, right_eye_image, mouth_image, vr_image = load_random_character_images()
 
 # 涙目
 sad_eye_image = cv2.imread('./options/sad_eye.png', cv2.IMREAD_UNCHANGED)
@@ -156,6 +187,9 @@ sun_image = cv2.imread('./options/sun.png', cv2.IMREAD_UNCHANGED)
 
 # 傘の顔
 kasa_usagi = cv2.imread('./options/kasaface.png', cv2.IMREAD_UNCHANGED)
+
+# 天照の顔
+ama_image = cv2.imread('./options/ama.png', cv2.IMREAD_UNCHANGED)
 
 # 画像をリサイズする関数
 def resize_image(image, scale):
@@ -252,7 +286,7 @@ def calculate_distance(landmark1, landmark2, image_width, image_height):
 
 
 # 顔の下で手を合わせているかどうかの関数
-def is_hands_joined_below_face(landmarks, image_width, image_height, join_threshold=50, face_to_hand_ratio=0.5):
+def is_hands_joined_below_face(landmarks, image_width, image_height, join_threshold=50, face_to_hand_ratio=1):
 
     # 顔（鼻）と手のランドマークを取得
     nose = landmarks[mp_pose.PoseLandmark.NOSE]
@@ -280,7 +314,37 @@ def is_hands_joined_below_face(landmarks, image_width, image_height, join_thresh
     return False
 
 
-# 片手が顔の近くにあるかを判定する関数
+# 片手が顔の横にあるかを判定する関数
+def is_hand_near_side_of_face(landmarks, image_width, image_height, eye_distance, threshold_ratio=3):
+
+    hand_near_side_of_face = False
+
+    # 顔の中心と手のランドマークを取得
+    nose = landmarks[mp_pose.PoseLandmark.NOSE]
+    left_hand = landmarks[mp_pose.PoseLandmark.LEFT_WRIST]
+    right_hand = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST]
+
+    # 水平および垂直方向の閾値を設定
+    horizontal_threshold = threshold_ratio * eye_distance
+    vertical_threshold = 1 * eye_distance  # 垂直方向の閾値をやや小さめに設定
+
+    # 左手と顔の位置関係の判定（左手が顔の左側にあるか）
+    left_near_side = (left_hand.x < nose.x) and \
+                     (abs(left_hand.y - nose.y) * image_height < vertical_threshold) and \
+                     (calculate_distance(nose, left_hand, image_width, image_height) < horizontal_threshold)
+
+    # 右手と顔の位置関係の判定（右手が顔の右側にあるか）
+    right_near_side = (right_hand.x > nose.x) and \
+                      (abs(right_hand.y - nose.y) * image_height < vertical_threshold) and \
+                      (calculate_distance(nose, right_hand, image_width, image_height) < horizontal_threshold)
+
+    # 片手が顔の横にある場合
+    if left_near_side or right_near_side:
+        hand_near_side_of_face = True
+
+    return hand_near_side_of_face
+
+# 両手が顔の近くにあるかを判定する関数
 def is_hand_near_face(landmarks, image_width, image_height, eye_distance, threshould_ratio=2):
 
     hand_near_face = False
@@ -299,34 +363,53 @@ def is_hand_near_face(landmarks, image_width, image_height, eye_distance, thresh
     left_near_face = left_distance < threshould_distance
     right_near_face = right_distance < threshould_distance
 
-    if ((left_near_face == True) and (right_near_face == False)) or ((left_near_face == False) and (right_near_face == True)):
+    if left_near_face and right_near_face:
         hand_near_face = True
 
     return hand_near_face
 
-# 両手が顔の近くにあるかを判定する関数
-def is_hands_near_face(landmarks, image_width, image_height, eye_distance, threshould_ratio=3):
+# 両手が顔の横にあるかどうか判定する関数
+def are_hands_on_sides_of_face(landmarks, image_width, image_height, eye_distance, threshold_ratio=2.5, vertical_threshold_ratio=2.5):
 
-    hands_near_face = False
-
-    # 鼻と両手のランドマークを取得
+    # 顔の中央（鼻の位置）と手のランドマークを取得
     nose = landmarks[mp_pose.PoseLandmark.NOSE]
     left_hand = landmarks[mp_pose.PoseLandmark.LEFT_INDEX]
     right_hand = landmarks[mp_pose.PoseLandmark.RIGHT_INDEX]
+    
+    # 閾値を設定
+    horizontal_threshold = threshold_ratio * eye_distance
+    vertical_threshold = vertical_threshold_ratio * eye_distance
 
-    # 両手と顔の距離を計算
-    left_distance = calculate_distance(nose, left_hand, image_width, image_height)
-    right_distance = calculate_distance(nose, right_hand, image_width, image_height)
+    # 左手が顔の左側かどうか（左手が顔の左、かつ上下の位置も近いか）
+    left_side = (left_hand.x < nose.x) and \
+                (abs(left_hand.y - nose.y) * image_height < vertical_threshold) and \
+                (calculate_distance(nose, left_hand, image_width, image_height) < horizontal_threshold)
 
-    # 両手と顔の距離が閾値いないなら、顔の近くにあると判定
-    threshould_distance = threshould_ratio * eye_distance
-    left_near_face = left_distance < threshould_distance
-    right_near_face = right_distance < threshould_distance
+    # 右手が顔の右側かどうか（右手が顔の右、かつ上下の位置も近いか）
+    right_side = (right_hand.x > nose.x) and \
+                 (abs(right_hand.y - nose.y) * image_height < vertical_threshold) and \
+                 (calculate_distance(nose, right_hand, image_width, image_height) < horizontal_threshold)
 
-    if (left_near_face == True) and (right_near_face == True):
-        hands_near_face = True
+    # 両手がそれぞれ顔の左右にある場合
+    return left_side and right_side
 
-    return hands_near_face
+# 右手が顔のすぐ下にあるかどうかの関数
+def is_right_hand_near_chin(landmarks, threshold=0.1):
+
+    # 顎と右手のランドマークの座標を取得
+    chin_x = landmarks[mp_pose.PoseLandmark.MOUTH_RIGHT].x
+    chin_y = landmarks[mp_pose.PoseLandmark.MOUTH_RIGHT].y
+    right_hand_x = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST].x
+    right_hand_y = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST].y
+
+    # 顎と右手の距離を計算
+    distance = math.sqrt((chin_x - right_hand_x) ** 2 + (chin_y - right_hand_y) ** 2)
+
+    # 判定: 距離が閾値（threshold）より小さい場合、右手は顎の近くにある
+    if distance < threshold:
+        return True
+    else:
+        return False
 
 # 右手が挙がっているかどうかを判定する関数
 def is_right_hand_raised(landmarks, image_height):
@@ -406,10 +489,13 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             eye_distance = calculate_distance(left_eye, right_eye, frame.shape[1], frame.shape[0])
 
             # 両手が顔の近くにあるか判定
-            hands_near_face = is_hands_near_face(results.pose_landmarks.landmark, frame.shape[1], frame.shape[0], eye_distance)
+            hands_near_face = are_hands_on_sides_of_face(results.pose_landmarks.landmark, frame.shape[1], frame.shape[0], eye_distance)
 
             # 片手が顔の近くにあるか判定
             hand_near_face = is_hand_near_face(results.pose_landmarks.landmark, frame.shape[1], frame.shape[0], eye_distance)
+
+            # 右手が顔の下側にあるか判定
+            hand_near_lower = is_right_hand_near_chin(results.pose_landmarks.landmark)
 
             # 右手が挙がっているか判定
             right_hand_raised = is_right_hand_raised(results.pose_landmarks.landmark, frame.shape[0])
@@ -451,21 +537,19 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
                 image = draw_rainbow_rain_effect(image)
 
             # 顔画像の貼り付け
-            if (right_hand_raised == True) and (hachi_flag == True):
+            if (hand_near_lower == True) and (hachi_flag == True):
                 image = overlay_image(image, mirai_hachi, (nose_x, nose_y), angle=0, scale=scale)
             elif (hands_joined == True) and (usagi_flag == True):
                 image = overlay_image(image, kasa_usagi, (nose_x, nose_y), angle=0, scale=scale)
+            elif (hand_near_lower == True) and (chi_flag == True):
+                image = overlay_image(image, ama_image, (nose_x, nose_y), angle=0, scale=scale)
             else:
                 image = overlay_image(image, face_image, (nose_x, nose_y), angle=0, scale=scale)
 
             # 目の位置と角度を計算して貼り付け
             eye_angle = np.degrees(np.arctan2(right_eye_y - left_eye_y, right_eye_x - left_eye_x))
-            if hands_near_face == True and hand_near_face == False:
-                image = overlay_image(image, sad_eye_image, (left_eye_x, left_eye_y), angle=eye_angle, scale=scale)
-                image = overlay_image(image, sad_eye_image, (right_eye_x, right_eye_y), angle=eye_angle, scale=scale)
-            else:
-                image = overlay_image(image, left_eye_image, (left_eye_x, left_eye_y), angle=eye_angle, scale=scale)
-                image = overlay_image(image, right_eye_image, (right_eye_x, right_eye_y), angle=eye_angle, scale=scale)
+            image = overlay_image(image, left_eye_image, (left_eye_x, left_eye_y), angle=eye_angle, scale=scale)
+            image = overlay_image(image, right_eye_image, (right_eye_x, right_eye_y), angle=eye_angle, scale=scale)
 
             # 口の位置と角度を計算して貼り付け
             image = overlay_image(image, mouth_image, (mouth_x, mouth_y), angle=eye_angle, scale=scale)
@@ -475,7 +559,7 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
                 image = overlay_image(image, vr_image, (nose_x, nose_y), angle=0, scale=scale)
 
             # 右手を挙げているとき貼り付け
-            if (right_hand_raised == True) and (left_hand_raised == False) and (hachi_flag == False):
+            if (right_hand_raised == True) and (left_hand_raised == False):
                 image = overlay_image(image, sun_image, (right_hand_x, right_hand_y), angle=0, scale=scale)
 
         # 画像を表示
@@ -483,6 +567,13 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
 
         # 1秒ごとの保存処理
         current_time = time.time()
+
+        # キャラクターを切り替える処理
+        if current_time - last_character_switch_time >= 10.0:
+            face_image, left_eye_image, right_eye_image, mouth_image, vr_image = load_random_character_images()
+            last_character_switch_time = current_time  # タイマーをリセット
+            print("キャラクターを切り替えました。")
+
         if current_time - last_save_time >= 1.0:
             last_save_time = current_time  # タイマーをリセット
 
@@ -493,27 +584,25 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
                 draw_thick_skeleton(skeleton_image, results.pose_landmarks.landmark, mp_pose.POSE_CONNECTIONS, thickness=20)
 
                 # 2. 画像を骨格の上に重ねる
-                if (right_hand_raised == True) and (hachi_flag == True):
+                if (hand_near_lower == True) and (hachi_flag == True):
                     skeleton_image = overlay_image(skeleton_image, mirai_hachi, (nose_x, nose_y), angle=0, scale=scale)
                 elif (hands_joined == True) and (usagi_flag == True):
                     skeleton_image = overlay_image(skeleton_image, kasa_usagi, (nose_x, nose_y), angle=0, scale=scale)
+                elif (hand_near_lower == True) and (chi_flag == True):
+                    skeleton_image = overlay_image(skeleton_image, ama_image, (nose_x, nose_y), angle=0, scale=scale)
                 else:
                     skeleton_image = overlay_image(skeleton_image, face_image, (nose_x, nose_y), angle=0, scale=scale)
 
                 # 目の位置と角度を計算して貼り付け
-                if hands_near_face == True and hand_near_face == False:
-                    skeleton_image = overlay_image(skeleton_image, sad_eye_image, (left_eye_x, left_eye_y), angle=eye_angle, scale=scale)
-                    skeleton_image = overlay_image(skeleton_image, sad_eye_image, (right_eye_x, right_eye_y), angle=eye_angle, scale=scale)
-                else:
-                    skeleton_image = overlay_image(skeleton_image, left_eye_image, (left_eye_x, left_eye_y), angle=eye_angle, scale=scale)
-                    skeleton_image = overlay_image(skeleton_image, right_eye_image, (right_eye_x, right_eye_y), angle=eye_angle, scale=scale)
+                skeleton_image = overlay_image(skeleton_image, left_eye_image, (left_eye_x, left_eye_y), angle=eye_angle, scale=scale)
+                skeleton_image = overlay_image(skeleton_image, right_eye_image, (right_eye_x, right_eye_y), angle=eye_angle, scale=scale)
 
                 skeleton_image = overlay_image(skeleton_image, mouth_image, (mouth_x, mouth_y), angle=eye_angle, scale=scale)
 
                 if hand_near_face == True:
                     skeleton_image = overlay_image(skeleton_image, vr_image, (nose_x, nose_y), angle=0, scale=scale)
 
-                if (right_hand_raised == True) and (left_hand_raised == False) and (hachi_flag == False):
+                if (right_hand_raised == True) and (left_hand_raised == False):
                     skeleton_image = overlay_image(skeleton_image, sun_image, (right_hand_x, right_hand_y), angle=0, scale=scale)
 
             except:
