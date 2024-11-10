@@ -286,6 +286,7 @@ def is_hand_near_face(landmarks, image_width, image_height, eye_distance, thresh
 
     return hand_near_face
 
+
 # 両手が顔の近くにあるかを判定する関数
 def is_hands_near_face(landmarks, image_width, image_height, eye_distance, threshould_ratio=5):
 
