@@ -536,6 +536,10 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             if hands_spread == True:
                 image = draw_rainbow_rain_effect(image)
 
+            # 右手を挙げているとき貼り付け
+            if (right_hand_raised == True) and (left_hand_raised == False):
+                image = overlay_image(image, sun_image, (right_hand_x, right_hand_y), angle=0, scale=scale)
+
             # 顔画像の貼り付け
             if (hand_near_lower == True) and (hachi_flag == True):
                 image = overlay_image(image, mirai_hachi, (nose_x, nose_y), angle=0, scale=scale)
@@ -557,10 +561,6 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
             # 片手が顔の近くにあるとき、装飾を貼り付け
             if hand_near_face == True:
                 image = overlay_image(image, vr_image, (nose_x, nose_y), angle=0, scale=scale)
-
-            # 右手を挙げているとき貼り付け
-            if (right_hand_raised == True) and (left_hand_raised == False):
-                image = overlay_image(image, sun_image, (right_hand_x, right_hand_y), angle=0, scale=scale)
 
         # 画像を表示
         cv2.imshow('Pose Estimation', image)
@@ -584,6 +584,10 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
                 draw_thick_skeleton(skeleton_image, results.pose_landmarks.landmark, mp_pose.POSE_CONNECTIONS, thickness=20)
 
                 # 2. 画像を骨格の上に重ねる
+
+                if (right_hand_raised == True) and (left_hand_raised == False):
+                    skeleton_image = overlay_image(skeleton_image, sun_image, (right_hand_x, right_hand_y), angle=0, scale=scale)
+
                 if (hand_near_lower == True) and (hachi_flag == True):
                     skeleton_image = overlay_image(skeleton_image, mirai_hachi, (nose_x, nose_y), angle=0, scale=scale)
                 elif (hands_joined == True) and (usagi_flag == True):
@@ -601,9 +605,6 @@ with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as 
 
                 if hand_near_face == True:
                     skeleton_image = overlay_image(skeleton_image, vr_image, (nose_x, nose_y), angle=0, scale=scale)
-
-                if (right_hand_raised == True) and (left_hand_raised == False):
-                    skeleton_image = overlay_image(skeleton_image, sun_image, (right_hand_x, right_hand_y), angle=0, scale=scale)
 
             except:
                 pass
